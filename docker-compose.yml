@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: shop-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shopdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - shopsmart_postgres_data:/var/lib/postgresql/data
+      - ./infra-postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shopdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - shopsmart-network
+
+  users-service:
+    build:
+      context: .
+      dockerfile: users-service/Dockerfile
+    container_name: users-service
+    restart: always
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: shopdb
+      DB_SSLMODE: disable
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shopsmart-network
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: inventory-service/Dockerfile
+    container_name: inventory-service
+    restart: always
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: shopdb
+      DB_SSLMODE: disable
+    expose:
+      - "3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shopsmart-network
+
+  orders-service:
+    build:
+      context: .
+      dockerfile: orders-service/Dockerfile
+    container_name: orders-service
+    restart: always
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: shopdb
+      DB_SSLMODE: disable
+    expose:
+      - "3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shopsmart-network
+
+volumes:
+  shopsmart_postgres_data:
+
+networks:
+  shopsmart-network:
+    name: shopsmart-network
